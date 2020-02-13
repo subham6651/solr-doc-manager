@@ -24,8 +24,8 @@ import json
 import logging
 import os
 import re
-
-from pysolr import Solr, SolrError
+import pysolr
+from pysolr import Solr, SolrError,SolrCloud
 
 from mongo_connector import errors
 from mongo_connector.compat import u
@@ -62,13 +62,18 @@ class DocManager(DocManagerBase):
     updates to the same doc reflect the most up to date version as opposed to
     multiple, slightly different versions of a doc.
     """
-
     def __init__(self, url, auto_commit_interval=DEFAULT_COMMIT_INTERVAL,
                  unique_key='_id', chunk_size=DEFAULT_MAX_BULK, **kwargs):
         """Verify Solr URL and establish a connection.
         """
         self.url = url
-        self.solr = Solr(url, **kwargs.get('clientOptions', {}))
+        self.isCloud = False
+        if kwargs.get("SOLR_CLOUD") and kwargs.get("zookeeper_hosts") and kwargs.get("collection_name"):
+            zookeeper = pysolr.ZooKeeper(kwargs.get("zookeeper_hosts"))
+            self.solr = SolrCloud(zookeeper, kwargs.get("collection_name"), **kwargs.get('clientOptions', {}))
+            self.isCloud = True
+        else:
+            self.solr = Solr(url, **kwargs.get('clientOptions', {}))
         self.unique_key = unique_key
         # pysolr does things in milliseconds
         if auto_commit_interval is not None:
@@ -307,7 +312,6 @@ class DocManager(DocManagerBase):
 
         if self.auto_commit_interval == 0:
             params['commit'] = 'true'
-
         request = Request(os.path.join(
             self.url, "update/extract?%s" % urlencode(params)))
 
