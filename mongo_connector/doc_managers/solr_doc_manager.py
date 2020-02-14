@@ -63,15 +63,13 @@ class DocManager(DocManagerBase):
     multiple, slightly different versions of a doc.
     """
     def __init__(self, url, auto_commit_interval=DEFAULT_COMMIT_INTERVAL,
-                 unique_key='_id', chunk_size=DEFAULT_MAX_BULK, **kwargs):
+                 unique_key='_id', chunk_size=DEFAULT_MAX_BULK, solr_cloud=False, collection_name=None, **kwargs):
         """Verify Solr URL and establish a connection.
         """
         self.url = url
-        self.isCloud = False
-        if kwargs.get("SOLR_CLOUD") and kwargs.get("zookeeper_hosts") and kwargs.get("collection_name"):
-            zookeeper = pysolr.ZooKeeper(kwargs.get("zookeeper_hosts"))
-            self.solr = SolrCloud(zookeeper, kwargs.get("collection_name"), **kwargs.get('clientOptions', {}))
-            self.isCloud = True
+        if solr_cloud:
+            zookeeper = pysolr.ZooKeeper(url)
+            self.solr = SolrCloud(zookeeper, collection_name, **kwargs.get('clientOptions', {}))
         else:
             self.solr = Solr(url, **kwargs.get('clientOptions', {}))
         self.unique_key = unique_key
